@@ -6,11 +6,8 @@
 
 
 
-import time
-import xlsxwriter
-import datetime
-import requests
-import random
+import time, datetime, requests, random
+from openpyxl import Workbook
 
 
 def get_page(url, pn, kd):
@@ -19,9 +16,10 @@ def get_page(url, pn, kd):
         'Host': 'www.lagou.com',
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36',
         'Connection': 'keep-alive',
-        # 'Content-Type': 'application / x - www - form - urlencoded;charset = UTF - 8',
-        'Referer': 'https://www.lagou.com/jobs/list_{}?labelWords=&fromSearch=true&suginput='.format(kd),
-        # 'Accept': 'application/json, text/javascript, */*; q=0.01',
+        'Content-Type': 'application / x - www - form - urlencoded;charset = UTF - 8',
+        # 'Referer': 'https://www.lagou.com/jobs/list_{}?labelWords=&fromSearch=true&suginput='.format(kd),
+        'Referer': 'https://www.lagou.com/jobs/list_%E8%BF%90%E7%BB%B4%E5%BC%80%E5%8F%91?labelWords=&fromSearch=true&suginput=',
+        'Accept': 'application/json, text/javascript, */*; q=0.01',
         'Origin': 'https://www.lagou.com'
     }
 
@@ -35,15 +33,18 @@ def get_page(url, pn, kd):
 
 
 def get_info(page, tag):
-    page_json = page['content']['positionResult']['result']
-    page_result = [num for num in range(15)]
+    page_ret = page['content']['positionResult']['result']
     # 一个页面 15个岗位
-    for i in range(15):
-        page_result[i] = []
+    ret = []
+    for item in page_ret:
+        row = []
         for page_tag in tag:
-            page_result[i].append(page_json[i].get(page_tag))
-        page_result[i][8] = ','.join(page_result[i][8])
-    return page_result
+            if isinstance(item[page_tag], list):
+                row.append(','.join(item[page_tag]))
+            else:
+                row.append(item[page_tag])
+        ret.append(row)
+    return ret
 
 
 def read_max_page(page):
@@ -54,18 +55,12 @@ def read_max_page(page):
 
 
 def save_excel(fin_result, tag_name, file_name):
-    book = xlsxwriter.Workbook('./{}.xls'.format(file_name))
-    tmp = book.add_worksheet()
-    row_num = len(fin_result)
-    for i in range(1, row_num):
-        if i == 1:
-            tag_pos = 'A{}'.format(i)
-            tmp.write_row(tag_pos, tag_name)
-        else:
-            con_pos = 'A{}'.format(i)
-            content = fin_result[i - 1]  # -1是因为被表格的表头所占
-            tmp.write_row(con_pos, content)
-    book.close()
+    wb = Workbook()
+    ws = wb.active
+    ws.append(tag_name)
+    for row in fin_result:
+        ws.append(row)
+    wb.save('{}.xlsx'.format(file_name))
 
 
 if __name__ == '__main__':
